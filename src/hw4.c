@@ -289,7 +289,9 @@ void* handle_client(void* sockFD)
             // Call the initialize packet handler for placing pieces
             printf("[Server] Initialize packet received from client %d\n", client_fd);
             //handle_initialize_packet(client_fd, buffer, player_board);
-            handle_initialize_packet(client_fd, buffer, game_state.player1_board);
+            printf("Player#: %d", player);
+            //if player == 1 then this else do it for 2
+            handle_initialize_packet(client_fd, buffer, game_state.player1_board); // here is the problem, I need to find a good way to know whether to send player1board or player2, or maybe use player ID and if statements
         }
         else if (strcmp(buffer, "F") == 0) 
         {
