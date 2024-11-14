@@ -229,18 +229,52 @@ void handle_forfeit_packet(int forfeiting_client_fd)
 //     send(client_fd, response, sizeof(response), 0);
 // }
 
-int is_valid_piece(int type, int rotation, int column, int row, int player) 
+int is_valid_piece(int type, int rotation, int col, int row, int player_id) 
 {
-    // Your validation logic here (check if the piece fits on the board and doesn't overlap)
-    return 1;  // Assume valid for now (you can implement detailed checks)
+    int (*piece_shape)[4][2] = pieces[type][rotation];
+    int *board = (player_id == 1) ? game_state.player1_board : game_state.player2_board;
+
+    for (int i = 0; i < 4; i++) 
+    {
+        printf("piece_shape[i][0] : %d", piece_shape[i][0]);
+        printf("piece_shape[i][1] : %d", piece_shape[i][1]);
+        int x = row + piece_shape[i][0];
+        int y = col + piece_shape[i][1];
+
+        // Check board boundaries
+        if (x < 0 || x >= game_state.width || y < 0 || y >= game_state.width) 
+        {
+            printf("Out of bounds: X -> %d Y -> %d", x, y);
+            return 0;
+        }
+
+        // Calculate position in 1D array
+        int pos = x * game_state.width + y;
+
+        // Check for overlap
+        if (board[pos] != 0) 
+        {
+            printf("[Debug] Invalid piece placement: Overlap at position %d\n", pos);
+            return 0;
+        }
+    }
+    return 1;
 }
 
-void place_piece_on_board(int type, int rotation, int column, int row, int player, int* player_board) 
+
+void place_piece_on_board(int type, int rotation, int col, int row, int* player_board) 
 {
-    player_board[row * game_state.width + column] = 1;
-    // Logic to map piece type, rotation, and position to the game board
-    // For example, update the board array with the new piece placement
-    printf("Placing piece %d at (%d, %d) with rotation %d.\n", type, column, row, rotation);
+    int (*piece_shape)[4][2] = pieces[type][rotation];
+    for (int i = 0; i < 4; i++) 
+    {
+        int x = row + piece_shape[i][0];
+        int y = col + piece_shape[i][1];
+        int pos = x * game_state.width + y;
+
+        // Mark the cell on the board with the piece's type
+        player_board[pos] = type + 1;
+        printf("[Debug] Placed piece segment at board[%d] (%d, %d)\n", pos, x, y);
+    }
 }
 
 void handle_initialize_packet(int client_fd, char *buffer, int* player_board) 
@@ -268,6 +302,7 @@ void handle_initialize_packet(int client_fd, char *buffer, int* player_board)
         int rotation = piece_data[i * 4 + 1];
         int col = piece_data[i * 4 + 2];
         int row = piece_data[i * 4 + 3];
+        printf("Type : %d Rot: %d Col: %d Row: %d", type, rotation, col, row);
 
         // Validate piece placement
         if (!is_valid_piece(type, rotation, col, row, player_id)) 
@@ -277,7 +312,7 @@ void handle_initialize_packet(int client_fd, char *buffer, int* player_board)
         }
 
         // Place the piece on the player's board
-        place_piece_on_board(type, rotation, col, row, player_id, player_board_to_edit);
+        place_piece_on_board(type, rotation, col, row, player_board_to_edit);
     }
 
     printf("[Server] Player %d's pieces initialized successfully.\n", player_id);
