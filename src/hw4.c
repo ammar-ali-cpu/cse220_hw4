@@ -166,80 +166,20 @@ void handle_forfeit_packet(int forfeiting_client_fd)
 }
 
 
-// void handle_initialize_packet(int client_fd, char* buffer, int player, int* player_board) 
-// {
-//     int piece_type, rotation, col, row;
-//     int parsed_values[5][4]; // Array to hold each piece's attributes
-    
-//     // Skip the "I" and parse the following 20 integers
-//     char* token = strtok(buffer + 2, " "); // Start after "I "
-//     for (int i = 0; i < 5; i++) 
-//     {
-//         if (token == NULL) 
-//         {
-//             fprintf(stderr, "[Server] Error: Insufficient data in initialize packet\n");
-//             return; // Packet is malformed
-//         }
-//         piece_type = atoi(token); token = strtok(NULL, " ");
-//         rotation = atoi(token); token = strtok(NULL, " ");
-//         col = atoi(token); token = strtok(NULL, " ");
-//         row = atoi(token); token = strtok(NULL, " ");
-        
-//         parsed_values[i][0] = piece_type;
-//         parsed_values[i][1] = rotation;
-//         parsed_values[i][2] = col;
-//         parsed_values[i][3] = row;
-        
-//         // Check if piece type and rotation are valid
-//         if (piece_type < 0 || piece_type >= 7 || rotation < 0 || rotation >= 4) {
-//             fprintf(stderr, "[Server] Error: Invalid piece type or rotation\n");
-//             return;
-//         }
-        
-//         // Retrieve piece shape based on type and rotation
-//         int (*piece_shape)[2] = pieces[piece_type][rotation];
-        
-//         // Validate and place each cell in the piece
-//         for (int j = 0; j < 4; j++) {
-//             int cell_col = col + piece_shape[j][1];
-//             int cell_row = row + piece_shape[j][0];
-            
-//             // Check if the piece is within board boundaries
-//             if (cell_col < 0 || cell_col >= game_state.width || cell_row < 0 || cell_row >= game_state.height) 
-//             {
-//                 fprintf(stderr, "[Server] Error: Piece out of bounds\n");
-//                 return;
-//             }
-            
-//             // Check if the cell is already occupied
-//             if (player_board[cell_row * game_state.width + cell_col] != 0) 
-//             {
-//                 fprintf(stderr, "[Server] Error: Piece overlaps with another\n");
-//                 return;
-//             }
-            
-//             // Place the piece on the board
-//             player_board[cell_row * game_state.width + cell_col] = player;
-//         }
-//     }
-    
-//     printf("[Server] Successfully placed pieces for player %d\n", player);
-//     // Notify the client that initialization was successful
-//     char response[] = "ACK I";
-//     send(client_fd, response, sizeof(response), 0);
-// }
+
 
 int is_valid_piece(int type, int rotation, int col, int row, int player_id) 
 {
-    int (*piece_shape)[4][2] = pieces[type][rotation];
+    //int (*piece_shape)[4][2] = pieces[type][rotation];
     int *board = (player_id == 1) ? game_state.player1_board : game_state.player2_board;
 
     for (int i = 0; i < 4; i++) 
     {
-        printf("piece_shape[i][0] : %d", piece_shape[i][0]);
-        printf("piece_shape[i][1] : %d", piece_shape[i][1]);
-        int x = row + piece_shape[i][0];
-        int y = col + piece_shape[i][1];
+        printf("piece_shape[i][0] : %d", pieces[type][rotation][i][0]); //this should not be 7 and 4 because that will only look at last piece, last rotation
+        printf("piece_shape[i][1] : %d", pieces[type][rotation][i][1]);
+        
+        int x = row + pieces[7][4][i][0];
+        int y = col + pieces[7][4][i][1];
 
         // Check board boundaries
         if (x < 0 || x >= game_state.width || y < 0 || y >= game_state.width) 
@@ -264,15 +204,16 @@ int is_valid_piece(int type, int rotation, int col, int row, int player_id)
 
 void place_piece_on_board(int type, int rotation, int col, int row, int* player_board) 
 {
-    int (*piece_shape)[4][2] = pieces[type][rotation];
+    //int (*piece_shape)[4][2] = pieces[type][rotation];
     for (int i = 0; i < 4; i++) 
     {
-        int x = row + piece_shape[i][0];
-        int y = col + piece_shape[i][1];
+        int x = row + pieces[type][rotation][i][0];
+        int y = col + pieces[type][rotation][i][1];
         int pos = x * game_state.width + y;
 
         // Mark the cell on the board with the piece's type
-        player_board[pos] = type + 1;
+        printf("Pos: %d\n", pos);
+        player_board[pos] = type + 1; //Issue: does not chnage ACTUAL boards, pass by value/reference error -> game_state.board1/2 not passed as parameters anywhere
         printf("[Debug] Placed piece segment at board[%d] (%d, %d)\n", pos, x, y);
     }
 }
@@ -293,7 +234,7 @@ void handle_initialize_packet(int client_fd, char *buffer, int* player_board)
 
     // Assume game_state is already defined and initialized
     int player_id = (client_fd == client1_fd) ? 1 : 2;
-    int* player_board_to_edit = player_board;
+    //int* player_board_to_edit = player_board;
 
     // Process each piece (5 pieces with 4 attributes each)
     for (int i = 0; i < 5; i++) 
@@ -312,7 +253,7 @@ void handle_initialize_packet(int client_fd, char *buffer, int* player_board)
         }
 
         // Place the piece on the player's board
-        place_piece_on_board(type, rotation, col, row, player_board_to_edit);
+        place_piece_on_board(type, rotation, col, row, player_board);
     }
 
     printf("[Server] Player %d's pieces initialized successfully.\n", player_id);
@@ -347,7 +288,8 @@ void* handle_client(void* sockFD)
         {
             // Call the initialize packet handler for placing pieces
             printf("[Server] Initialize packet received from client %d\n", client_fd);
-            handle_initialize_packet(client_fd, buffer, player_board);
+            //handle_initialize_packet(client_fd, buffer, player_board);
+            handle_initialize_packet(client_fd, buffer, game_state.player1_board);
         }
         else if (strcmp(buffer, "F") == 0) 
         {
@@ -417,7 +359,7 @@ int main()
     address1.sin_port = htons(PORT1);
 
     bind(server_fd1, (struct sockaddr*)&address1, sizeof(address1));
-    listen(server_fd1, 1);
+    listen(server_fd1, 3);
 
     // Setup socket for client 2
     server_fd2 = socket(AF_INET, SOCK_STREAM, 0);
@@ -426,7 +368,7 @@ int main()
     address2.sin_port = htons(PORT2);
 
     bind(server_fd2, (struct sockaddr*)&address2, sizeof(address2));
-    listen(server_fd2, 1);
+    listen(server_fd2, 3);
 
     printf("[Server] Waiting for players...\n");
 
