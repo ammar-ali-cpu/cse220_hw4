@@ -23,65 +23,6 @@ GameState game_state;
 int client1_fd;
 int client2_fd;
 
-
-// typedef struct {
-//     int coordinates[4][2];  // Array to hold up to 4 coordinates (row, col)
-// } PieceShape;
-
-// // Define all pieces' shapes and their rotations
-// PieceShape pieces[7][4] = 
-// {
-//     // O-piece (index 0)
-//     {
-//         {{0, 0}, {0, 1}, {1, 0}, {1, 1}},   // Rotation 1
-//         {{0, 0}, {0, 1}, {1, 0}, {1, 1}},   // Rotation 2 (same as 1)
-//         {{0, 0}, {0, 1}, {1, 0}, {1, 1}},   // Rotation 3 (same as 1)
-//         {{0, 0}, {0, 1}, {1, 0}, {1, 1}}  // Rotation 3 (same as Rotation 2)
-//     },
-//     // I-piece (index 1)
-//     {
-//         {{0, 0}, {1, 0}, {2, 0}, {3, 0}}, // Rotation 0 (vertical)
-//         {{0, 0}, {0, 1}, {0, 2}, {0, 3}}, // Rotation 1 (horizontal)
-//         {{0, 0}, {1, 0}, {2, 0}, {3, 0}}, // Rotation 2 (same as Rotation 0)
-//         {{0, 0}, {0, 1}, {0, 2}, {0, 3}}  // Rotation 3 (same as Rotation 1)
-//     },
-//     // Red-piece (index 2)
-//     {
-//         {{1, 0}, {1, 1}, {0, 1}, {0, 2}}, 
-//         {{0, 0}, {1, 0}, {1, 1}, {2, 1}},
-//         {{1, 0}, {1, 1}, {0, 1}, {0, 2}}, 
-//         {{0, 0}, {1, 0}, {1, 1}, {2, 1}}
-//     },
-//     // L-piece (index 3)
-//     {
-//         {{0, 0}, {1, 0}, {2, 0}, {2, 1}}, // Rotation 0
-//         {{0, 0}, {0, 1}, {0, 2}, {1, 0}}, // Rotation 1
-//         {{0, 0}, {0, 1}, {1, 1}, {2, 1}}, // Rotation 2
-//         {{1, 0}, {1, 1}, {1, 2}, {0, 2}}  // Rotation 3
-//     },
-//     // Green-piece (index 4)
-//     {
-//         {{0, 0}, {0, 1}, {1, 1}, {1, 2}},
-//         {{1, 0}, {2, 0}, {1, 1}, {0, 1}}, 
-//         {{0, 0}, {0, 1}, {1, 1}, {1, 2}},
-//         {{1, 0}, {2, 0}, {1, 1}, {0, 1}}  
-//     },
-//     // Pink-piece (index 5)
-//     {
-//         {{2, 0}, {2, 1}, {1, 1}, {0, 1}},
-//         {{0, 0}, {1, 0}, {1, 1}, {1, 2}}, 
-//         {{0, 0}, {0, 1}, {1, 0}, {2, 0}},
-//         {{0, 0}, {0, 1}, {0, 2}, {1, 2}}  
-//     },
-//     // Purple-piece (index 6)
-//     {
-//         {{0, 0}, {0, 1}, {0, 2}, {1, 1}},
-//         {{1, 0}, {1, 1}, {0, 1}, {2, 1}}, 
-//         {{1, 0}, {1, 1}, {0, 1}, {1, 2}},
-//         {{0, 0}, {1, 0}, {2, 0}, {1, 1}}  
-//     }
-// };
-
 int pieces[7][4][4][2] =  
 {
     // Yellow-piece (index 0)
@@ -93,10 +34,10 @@ int pieces[7][4][4][2] =
     },
     // I-piece (index 1)
     {
-        {{0, 0}, {1, 0}, {2, 0}, {3, 0}}, // Rotation 0 (vertical)
-        {{0, 0}, {0, 1}, {0, 2}, {0, 3}}, // Rotation 1 (horizontal)
-        {{0, 0}, {1, 0}, {2, 0}, {3, 0}}, // Rotation 2 (same as Rotation 0)
-        {{0, 0}, {0, 1}, {0, 2}, {0, 3}}  // Rotation 3 (same as Rotation 1)
+        {{0, 0}, {1, 0}, {2, 0}, {3, 0}}, 
+        {{0, 0}, {0, 1}, {0, 2}, {0, 3}}, 
+        {{0, 0}, {1, 0}, {2, 0}, {3, 0}}, 
+        {{0, 0}, {0, 1}, {0, 2}, {0, 3}}  
     },
     // Red-piece (index 2)
     {
@@ -107,10 +48,10 @@ int pieces[7][4][4][2] =
     },
     // L-piece (index 3)
     {
-        {{0, 0}, {1, 0}, {2, 0}, {2, 1}}, // Rotation 0
-        {{0, 0}, {0, 1}, {0, 2}, {1, 0}}, // Rotation 1
-        {{0, 0}, {0, 1}, {1, 1}, {2, 1}}, // Rotation 2
-        {{1, 0}, {1, 1}, {1, 2}, {0, 2}}  // Rotation 3
+        {{0, 0}, {1, 0}, {2, 0}, {2, 1}}, 
+        {{0, 0}, {0, 1}, {0, 2}, {1, 0}}, 
+        {{0, 0}, {0, 1}, {1, 1}, {2, 1}},
+        {{1, 0}, {1, 1}, {1, 2}, {0, 2}}  
     },
     // Z-piece (index 4)
     {
@@ -135,6 +76,20 @@ int pieces[7][4][4][2] =
     }
 };
 
+void print_board(int *board, int width, int height) 
+{
+    printf("\nGame Board:\n");
+    for (int row = 0; row < height; row++) 
+    {
+        for (int col = 0; col < width; col++) 
+        {
+            int cell = board[row * width + col];
+            printf("%d ", cell);  
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
 
 //handling begin packet
 void handle_begin_packet(int client_fd, char* buffer)
@@ -161,6 +116,9 @@ void handle_begin_packet(int client_fd, char* buffer)
         memset(game_state.player1_board, 0, width * height * sizeof(int)); // Initialize Player 1's board to 0
         memset(game_state.player2_board, 0, width * height * sizeof(int)); // Initialize Player 2's board to 0
 
+        game_state.player1_ships_remaining = 5; 
+        game_state.player2_ships_remaining = 5;  
+
         // Send a response to Player 1 confirming the board dimensions were set
         snprintf(buffer, BUFFER_SIZE, "ACK Board dimensions set to %dx%d", width, height);
         send(client_fd, buffer, strlen(buffer), 0);
@@ -176,10 +134,154 @@ void handle_begin_packet(int client_fd, char* buffer)
     }
 }
 
+void send_halt_packet(int client_fd) 
+{
+    char halt_packet[] = "H";  // Halt packet
+    int nbytes = send(client_fd, halt_packet, strlen(halt_packet), 0);
+    if (nbytes == -1) 
+    {
+        perror("Error sending Halt packet");
+    } 
+    else 
+    {
+        printf("[Server] Sent Halt packet to client %d\n", client_fd);
+    }
+}
+
+void handle_forfeit_packet(int forfeiting_client_fd) 
+{
+    // Send the Halt packet to both clients
+    printf("[Server] Player forfeited, sending Halt packet to both clients.\n");
+
+    // Send Halt to Player 1
+    send_halt_packet(client1_fd);
+    // Send Halt to Player 2
+    send_halt_packet(client2_fd);
+
+    // Close the connections to both clients
+    close(client1_fd);
+    close(client2_fd);
+
+    printf("[Server] Both connections closed due to forfeit.\n");
+}
 
 
+// void handle_initialize_packet(int client_fd, char* buffer, int player, int* player_board) 
+// {
+//     int piece_type, rotation, col, row;
+//     int parsed_values[5][4]; // Array to hold each piece's attributes
+    
+//     // Skip the "I" and parse the following 20 integers
+//     char* token = strtok(buffer + 2, " "); // Start after "I "
+//     for (int i = 0; i < 5; i++) 
+//     {
+//         if (token == NULL) 
+//         {
+//             fprintf(stderr, "[Server] Error: Insufficient data in initialize packet\n");
+//             return; // Packet is malformed
+//         }
+//         piece_type = atoi(token); token = strtok(NULL, " ");
+//         rotation = atoi(token); token = strtok(NULL, " ");
+//         col = atoi(token); token = strtok(NULL, " ");
+//         row = atoi(token); token = strtok(NULL, " ");
+        
+//         parsed_values[i][0] = piece_type;
+//         parsed_values[i][1] = rotation;
+//         parsed_values[i][2] = col;
+//         parsed_values[i][3] = row;
+        
+//         // Check if piece type and rotation are valid
+//         if (piece_type < 0 || piece_type >= 7 || rotation < 0 || rotation >= 4) {
+//             fprintf(stderr, "[Server] Error: Invalid piece type or rotation\n");
+//             return;
+//         }
+        
+//         // Retrieve piece shape based on type and rotation
+//         int (*piece_shape)[2] = pieces[piece_type][rotation];
+        
+//         // Validate and place each cell in the piece
+//         for (int j = 0; j < 4; j++) {
+//             int cell_col = col + piece_shape[j][1];
+//             int cell_row = row + piece_shape[j][0];
+            
+//             // Check if the piece is within board boundaries
+//             if (cell_col < 0 || cell_col >= game_state.width || cell_row < 0 || cell_row >= game_state.height) 
+//             {
+//                 fprintf(stderr, "[Server] Error: Piece out of bounds\n");
+//                 return;
+//             }
+            
+//             // Check if the cell is already occupied
+//             if (player_board[cell_row * game_state.width + cell_col] != 0) 
+//             {
+//                 fprintf(stderr, "[Server] Error: Piece overlaps with another\n");
+//                 return;
+//             }
+            
+//             // Place the piece on the board
+//             player_board[cell_row * game_state.width + cell_col] = player;
+//         }
+//     }
+    
+//     printf("[Server] Successfully placed pieces for player %d\n", player);
+//     // Notify the client that initialization was successful
+//     char response[] = "ACK I";
+//     send(client_fd, response, sizeof(response), 0);
+// }
 
+int is_valid_piece(int type, int rotation, int column, int row, int player) 
+{
+    // Your validation logic here (check if the piece fits on the board and doesn't overlap)
+    return 1;  // Assume valid for now (you can implement detailed checks)
+}
 
+void place_piece_on_board(int type, int rotation, int column, int row, int player, int* player_board) 
+{
+    player_board[row * game_state.width + column] = 1;
+    // Logic to map piece type, rotation, and position to the game board
+    // For example, update the board array with the new piece placement
+    printf("Placing piece %d at (%d, %d) with rotation %d.\n", type, column, row, rotation);
+}
+
+void handle_initialize_packet(int client_fd, char *buffer, int* player_board) 
+{
+    int piece_data[20];  // Array to hold 5 pieces * 4 attributes (type, rotation, col, row) = 20 integers
+    int num_values = sscanf(buffer, "I %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+    &piece_data[0], &piece_data[1], &piece_data[2], &piece_data[3], &piece_data[4], &piece_data[5], &piece_data[6], &piece_data[7],
+    &piece_data[8], &piece_data[9], &piece_data[10], &piece_data[11], &piece_data[12], &piece_data[13], &piece_data[14], &piece_data[15],
+    &piece_data[16], &piece_data[17], &piece_data[18], &piece_data[19]);
+
+    if (num_values != 20) 
+    {
+        printf("[Server] Invalid initialize packet format.\n");
+        return;
+    }
+
+    // Assume game_state is already defined and initialized
+    int player_id = (client_fd == client1_fd) ? 1 : 2;
+    int* player_board_to_edit = player_board;
+
+    // Process each piece (5 pieces with 4 attributes each)
+    for (int i = 0; i < 5; i++) 
+    {
+        int type = piece_data[i * 4];
+        int rotation = piece_data[i * 4 + 1];
+        int col = piece_data[i * 4 + 2];
+        int row = piece_data[i * 4 + 3];
+
+        // Validate piece placement
+        if (!is_valid_piece(type, rotation, col, row, player_id)) 
+        {
+            printf("[Server] Invalid piece placement for player %d at piece %d.\n", player_id, i + 1);
+            return;
+        }
+
+        // Place the piece on the player's board
+        place_piece_on_board(type, rotation, col, row, player_id, player_board_to_edit);
+    }
+
+    printf("[Server] Player %d's pieces initialized successfully.\n", player_id);
+}
 
 
 
@@ -187,6 +289,9 @@ void* handle_client(void* sockFD)
 {
     int client_fd = *((int*)sockFD);
     char buffer[BUFFER_SIZE] = {0};
+
+    int player = (client_fd == client1_fd) ? 1 : 2;
+    int* player_board = (player == 1) ? game_state.player1_board : game_state.player2_board;
 
     while(1) 
     {
@@ -203,12 +308,42 @@ void* handle_client(void* sockFD)
         {
             handle_begin_packet(client_fd, buffer);
         }
+         else if (strncmp(buffer, "I", 1) == 0) 
+        {
+            // Call the initialize packet handler for placing pieces
+            printf("[Server] Initialize packet received from client %d\n", client_fd);
+            handle_initialize_packet(client_fd, buffer, player_board);
+        }
+        else if (strcmp(buffer, "F") == 0) 
+        {
+            printf("[Server] Forfeit packet received from client %d\n", client_fd);
+            handle_forfeit_packet(client_fd);  
+            break;
+        }
         //sscanf
         
+        printf("[Server] Player 1 Board:");
+        print_board(game_state.player1_board, game_state.width, game_state.height);
+        printf("[Server] Player 2 Board:");
+        print_board(game_state.player2_board, game_state.width, game_state.height);
 
         // Placeholder response for testing
         snprintf(buffer, BUFFER_SIZE, "ACK");
         send(client_fd, buffer, strlen(buffer), 0);
+
+         // Check win condition after every packet
+        if (game_state.player1_ships_remaining == 0) {
+            send(client1_fd, "H 0", 4, 0);
+            send(client2_fd, "H 1", 4, 0);
+            printf("[Server] Player 1 has lost!\n");
+            break;
+        } else if (game_state.player2_ships_remaining == 0) {
+            send(client2_fd, "H 0", 4, 0);
+            send(client1_fd, "H 1", 4, 0);
+            printf("[Server] Player 2 has lost!\n");
+            break;
+        }
+
     }
 
     close(client_fd);
