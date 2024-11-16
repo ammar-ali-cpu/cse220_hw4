@@ -168,23 +168,31 @@ void handle_forfeit_packet(int forfeiting_client_fd)
 
 
 
-int is_valid_piece(int type, int rotation, int col, int row, int player_id) 
+int is_valid_piece(int type, int rotation, int col, int row, int player_id, int* player_board) 
 {
     //int (*piece_shape)[4][2] = pieces[type][rotation];
     int *board = (player_id == 1) ? game_state.player1_board : game_state.player2_board;
 
     for (int i = 0; i < 4; i++) 
     {
-        printf("piece_shape[i][0] : %d", pieces[type][rotation][i][0]); //this should not be 7 and 4 because that will only look at last piece, last rotation
-        printf("piece_shape[i][1] : %d", pieces[type][rotation][i][1]);
+        printf("piece_shape[i][0] : %d\n", pieces[type][rotation][i][0]);
+        printf("piece_shape[i][1] : %d\n", pieces[type][rotation][i][1]);
         
-        int x = row + pieces[7][4][i][0];
-        int y = col + pieces[7][4][i][1];
+        int x = row + pieces[type][rotation][i][0];
+        int y = col + pieces[type][rotation][i][1];
 
         // Check board boundaries
         if (x < 0 || x >= game_state.width || y < 0 || y >= game_state.width) 
         {
-            printf("Out of bounds: X -> %d Y -> %d", x, y);
+            printf("Out of bounds: X -> %d Y -> %d\n", x, y);
+            if(player_id == 1)
+            {
+                memset(game_state.player1_board, 0, game_state.width * game_state.height * sizeof(int));
+            }
+            if(player_id == 2)
+            {
+                memset(game_state.player2_board, 0, game_state.width * game_state.height * sizeof(int));
+            }
             return 0;
         }
 
@@ -195,6 +203,14 @@ int is_valid_piece(int type, int rotation, int col, int row, int player_id)
         if (board[pos] != 0) 
         {
             printf("[Debug] Invalid piece placement: Overlap at position %d\n", pos);
+            if(player_id == 1)
+            {
+                memset(game_state.player1_board, 0, game_state.width * game_state.height * sizeof(int));
+            }
+            if(player_id == 2)
+            {
+                memset(game_state.player2_board, 0, game_state.width * game_state.height * sizeof(int));
+            }
             return 0;
         }
     }
@@ -246,7 +262,7 @@ void handle_initialize_packet(int client_fd, char *buffer, int* player_board)
         printf("Type : %d Rot: %d Col: %d Row: %d", type, rotation, col, row);
 
         // Validate piece placement
-        if (!is_valid_piece(type, rotation, col, row, player_id)) 
+        if (!is_valid_piece(type, rotation, col, row, player_id, player_board)) 
         {
             printf("[Server] Invalid piece placement for player %d at piece %d.\n", player_id, i + 1);
             return;
@@ -289,9 +305,16 @@ void* handle_client(void* sockFD)
             // Call the initialize packet handler for placing pieces
             printf("[Server] Initialize packet received from client %d\n", client_fd);
             //handle_initialize_packet(client_fd, buffer, player_board);
-            printf("Player#: %d", player);
-            //if player == 1 then this else do it for 2
-            handle_initialize_packet(client_fd, buffer, game_state.player1_board); // here is the problem, I need to find a good way to know whether to send player1board or player2, or maybe use player ID and if statements
+            //printf("Player#: %d", player);
+            
+            if(player == 1)
+            {
+                handle_initialize_packet(client_fd, buffer, game_state.player1_board);
+            }
+            if(player == 2)
+            {
+                handle_initialize_packet(client_fd, buffer, game_state.player2_board);
+            }
         }
         else if (strcmp(buffer, "F") == 0) 
         {
