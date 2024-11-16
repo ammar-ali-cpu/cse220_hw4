@@ -170,18 +170,16 @@ void handle_forfeit_packet(int forfeiting_client_fd)
 
 int is_valid_piece(int type, int rotation, int col, int row, int player_id, int* player_board) 
 {
-    //int (*piece_shape)[4][2] = pieces[type][rotation];
     int *board = (player_id == 1) ? game_state.player1_board : game_state.player2_board;
 
     for (int i = 0; i < 4; i++) 
     {
-        printf("piece_shape[i][0] : %d\n", pieces[type][rotation][i][0]);
-        printf("piece_shape[i][1] : %d\n", pieces[type][rotation][i][1]);
-        
+        // printf("piece_shape[i][0] : %d\n", pieces[type][rotation][i][0]);
+        // printf("piece_shape[i][1] : %d\n", pieces[type][rotation][i][1]);
         int x = row + pieces[type][rotation][i][0];
         int y = col + pieces[type][rotation][i][1];
 
-        // Check board boundaries
+        // Checking for out of bounds
         if (x < 0 || x >= game_state.width || y < 0 || y >= game_state.width) 
         {
             printf("Out of bounds: X -> %d Y -> %d\n", x, y);
@@ -196,10 +194,8 @@ int is_valid_piece(int type, int rotation, int col, int row, int player_id, int*
             return 0;
         }
 
-        // Calculate position in 1D array
         int pos = x * game_state.width + y;
-
-        // Check for overlap
+        // Checking for overlap
         if (board[pos] != 0) 
         {
             printf("[Debug] Invalid piece placement: Overlap at position %d\n", pos);
@@ -217,8 +213,7 @@ int is_valid_piece(int type, int rotation, int col, int row, int player_id, int*
     return 1;
 }
 
-
-void place_piece_on_board(int type, int rotation, int col, int row, int* player_board) 
+void place_piece(int type, int rotation, int col, int row, int* player_board, int shipNum) 
 {
     //int (*piece_shape)[4][2] = pieces[type][rotation];
     for (int i = 0; i < 4; i++) 
@@ -227,20 +222,20 @@ void place_piece_on_board(int type, int rotation, int col, int row, int* player_
         int y = col + pieces[type][rotation][i][1];
         int pos = x * game_state.width + y;
 
-        // Mark the cell on the board with the piece's type
+
         printf("Pos: %d\n", pos);
-        player_board[pos] = type + 1; //Issue: does not chnage ACTUAL boards, pass by value/reference error -> game_state.board1/2 not passed as parameters anywhere
-        printf("[Debug] Placed piece segment at board[%d] (%d, %d)\n", pos, x, y);
+        player_board[pos] = shipNum; 
+        //printf("[Debug] Placed piece segment at board[%d] (%d, %d)\n", pos, x, y);
     }
 }
 
 void handle_initialize_packet(int client_fd, char *buffer, int* player_board) 
 {
-    int piece_data[20];  // Array to hold 5 pieces * 4 attributes (type, rotation, col, row) = 20 integers
+    int shipInitializeData[20];  
     int num_values = sscanf(buffer, "I %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
-    &piece_data[0], &piece_data[1], &piece_data[2], &piece_data[3], &piece_data[4], &piece_data[5], &piece_data[6], &piece_data[7],
-    &piece_data[8], &piece_data[9], &piece_data[10], &piece_data[11], &piece_data[12], &piece_data[13], &piece_data[14], &piece_data[15],
-    &piece_data[16], &piece_data[17], &piece_data[18], &piece_data[19]);
+    &shipInitializeData[0], &shipInitializeData[1], &shipInitializeData[2], &shipInitializeData[3], &shipInitializeData[4], &shipInitializeData[5], &shipInitializeData[6], &shipInitializeData[7],
+    &shipInitializeData[8], &shipInitializeData[9], &shipInitializeData[10], &shipInitializeData[11], &shipInitializeData[12], &shipInitializeData[13], &shipInitializeData[14], &shipInitializeData[15],
+    &shipInitializeData[16], &shipInitializeData[17], &shipInitializeData[18], &shipInitializeData[19]);
 
     if (num_values != 20) 
     {
@@ -248,17 +243,14 @@ void handle_initialize_packet(int client_fd, char *buffer, int* player_board)
         return;
     }
 
-    // Assume game_state is already defined and initialized
     int player_id = (client_fd == client1_fd) ? 1 : 2;
-    //int* player_board_to_edit = player_board;
 
-    // Process each piece (5 pieces with 4 attributes each)
     for (int i = 0; i < 5; i++) 
     {
-        int type = piece_data[i * 4];
-        int rotation = piece_data[i * 4 + 1];
-        int col = piece_data[i * 4 + 2];
-        int row = piece_data[i * 4 + 3];
+        int type = shipInitializeData[i * 4];
+        int rotation = shipInitializeData[i * 4 + 1];
+        int col = shipInitializeData[i * 4 + 2];
+        int row = shipInitializeData[i * 4 + 3];
         printf("Type : %d Rot: %d Col: %d Row: %d", type, rotation, col, row);
 
         // Validate piece placement
@@ -269,13 +261,43 @@ void handle_initialize_packet(int client_fd, char *buffer, int* player_board)
         }
 
         // Place the piece on the player's board
-        place_piece_on_board(type, rotation, col, row, player_board);
+        place_piece(type, rotation, col, row, player_board, (i+1));
     }
-
     printf("[Server] Player %d's pieces initialized successfully.\n", player_id);
 }
 
+void handle_shoot_packet(int client_fd, char *buffer, int* opponents_board, int player)
+{
+    int row;
+    int col;
+    printf("Buffer is: %s", buffer);
+    sscanf(buffer, "S %d %d", row, col);
 
+    int player_id = (client_fd == client1_fd) ? 1 : 2;
+
+    if(row >= game_state.height || col >= game_state.width || row < 0 || col < 0)
+    {
+        printf("[Server] Player %d shot out of bounds\n", player_id);
+        return;
+    }
+
+    int pos = row * game_state.width + col;
+    if(opponents_board[pos] > 0)
+    {
+        opponents_board[pos] = -2;
+        printf("[Server] Player %d hit opponents board at postion (%d,%d)\n", player, row, col);
+    }
+    else if(opponents_board[pos] == 0)
+    {
+        opponents_board[pos] = -1;
+        printf("[Server] Player %d missed opponents board at postion (%d,%d)\n", player, row, col);
+    }
+    else
+    {
+        printf("[Server] Player %d already hit postion (%d,%d)\n", player, row, col);
+    }
+
+}
 
 void* handle_client(void* sockFD) 
 {
@@ -314,6 +336,17 @@ void* handle_client(void* sockFD)
             if(player == 2)
             {
                 handle_initialize_packet(client_fd, buffer, game_state.player2_board);
+            }
+        }
+        else if(strncmp(buffer, "S", 1) == 0)
+        {
+            if(player == 1)
+            {
+                handle_shoot_packet(client_fd, buffer, game_state.player2_board, player);
+            }
+            if(player == 2)
+            {
+                handle_shoot_packet(client_fd, buffer, game_state.player1_board, player);
             }
         }
         else if (strcmp(buffer, "F") == 0) 
@@ -383,8 +416,20 @@ int main()
     address1.sin_addr.s_addr = INADDR_ANY;
     address1.sin_port = htons(PORT1);
 
-    bind(server_fd1, (struct sockaddr*)&address1, sizeof(address1));
-    listen(server_fd1, 3);
+
+    //bind(server_fd1, (struct sockaddr*)&address1, sizeof(address1));
+    //listen(server_fd1, 3);
+    if (bind(server_fd1, (struct sockaddr *)&address1, sizeof(address1)) < 0) 
+    {
+        perror("[Server] bind() failed");
+        exit(EXIT_FAILURE);
+    }
+    if (listen(server_fd1, 3) < 0) 
+    {
+        perror("[Server] listen() failed");
+        exit(EXIT_FAILURE);
+    }
+
 
     // Setup socket for client 2
     server_fd2 = socket(AF_INET, SOCK_STREAM, 0);
@@ -392,8 +437,18 @@ int main()
     address2.sin_addr.s_addr = INADDR_ANY;
     address2.sin_port = htons(PORT2);
 
-    bind(server_fd2, (struct sockaddr*)&address2, sizeof(address2));
-    listen(server_fd2, 3);
+    // bind(server_fd2, (struct sockaddr*)&address2, sizeof(address2));
+    // listen(server_fd2, 3);
+    if (bind(server_fd2, (struct sockaddr *)&address2, sizeof(address2)) < 0) 
+    {
+        perror("[Server] bind() failed");
+        exit(EXIT_FAILURE);
+    }
+    if (listen(server_fd2, 3) < 0) 
+    {
+        perror("[Server] listen() failed");
+        exit(EXIT_FAILURE);
+    }
 
     printf("[Server] Waiting for players...\n");
 
@@ -405,12 +460,10 @@ int main()
     client2_fd = accept(server_fd2, (struct sockaddr*)&address2, &addr_len);
     printf("[Server] Player 2 connected.\n");
 
-    // Create threads to handle each client
+    // Creating threads for each client, runs the game
     pthread_t thread1, thread2;
     pthread_create(&thread1, NULL, handle_client, &client1_fd);
     pthread_create(&thread2, NULL, handle_client, &client2_fd);
-
-    // Wait for threads to finish
     pthread_join(thread1, NULL);
     pthread_join(thread2, NULL);
 
