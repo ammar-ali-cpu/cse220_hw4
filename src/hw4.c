@@ -80,6 +80,68 @@ int pieces[7][4][4][2] =
     }
 };
 
+void send_error(int client_fd, int errorNum)
+{
+    char errorMSG[BUFFER_SIZE];
+    char* ext = NULL;
+
+    if(errorNum == 100)
+    {
+        ext = "100: Invalid packet type (Expected Begin packet)";
+    }
+    if(errorNum == 101)
+    {
+        ext = "101: Invalid packet type (Expected Initialize packet)";
+    }
+    if(errorNum == 102)
+    {
+        ext = "102: Invalid packet type (Expected Shoot/Query/Forfeit)";
+    }
+
+    if(errorNum == 200)
+    {
+        ext = "200: Invalid Begin packet (invalid number of parameters or parameter out of range)";
+    }
+    if(errorNum == 201)
+    {
+        ext = "201: Invalid Initialize packet (invalid number of parameters)";
+    }
+    if(errorNum == 202)
+    {
+        ext = "202: Invalid Shoot packet (invalid number of parameters)";
+    }
+
+    if(errorNum == 300)
+    {
+        ext = "300: Invalid Initialize packet (shape out of range)";
+    }
+    if(errorNum == 301)
+    {
+        ext = "301: Invalid Initialize packet (rotation out of range)";
+    }
+    if(errorNum == 302)
+    {
+        ext = "302: Invalid Initialize packet (ship doesn't fit in game board)";
+    }
+    if(errorNum == 303)
+    {
+        ext = "303: Invalid Initialize packet (ships overlap)";
+    }
+
+    if(errorNum == 400)
+    {
+        ext = "400: Invalid Shoot packet (cell not in game board)";
+    }
+    if(errorNum == 401)
+    {
+        ext = "401: Invalid Shoot packet (cell already guessed)";
+    }
+
+    snprintf(errorMSG, sizeof(errorMSG), "Error: %s\n", ext);
+    send(client_fd, errorMSG, strlen(errorMSG), 0);
+    
+}
+
 void print_board(int *board, int width, int height) 
 {
     printf("\nGame Board:\n");
@@ -115,6 +177,7 @@ void handle_begin_packet(int client_fd, char* buffer)
         if (!game_state.player1_board || !game_state.player2_board) 
         {
             perror("Failed to allocate memory for game boards.");
+            send_error(client_fd, 200);
             exit(EXIT_FAILURE);
         }
         memset(game_state.player1_board, 0, width * height * sizeof(int)); // Initialize Player 1's board to 0
@@ -138,7 +201,7 @@ void handle_begin_packet(int client_fd, char* buffer)
     }
 }
 
-void send_halt_packet(int client_fd) 
+void send_halt_packet(int client_fd, int player) 
 {
     char halt_packet[] = "H";  // Halt packet
     int nbytes = send(client_fd, halt_packet, strlen(halt_packet), 0);
@@ -148,21 +211,17 @@ void send_halt_packet(int client_fd)
     } 
     else 
     {
-        printf("[Server] Sent Halt packet to client %d\n", client_fd);
+        printf("[Server] Sent Halt packet to client %d\n", player);
     }
 }
 
-void handle_forfeit_packet(int forfeiting_client_fd) 
+void handle_forfeit_packet(int forfeiting_client_fd, int player) 
 {
-    // Send the Halt packet to both clients
     printf("[Server] Player forfeited, sending Halt packet to both clients.\n");
 
-    // Send Halt to Player 1
-    send_halt_packet(client1_fd);
-    // Send Halt to Player 2
-    send_halt_packet(client2_fd);
+    send_halt_packet(client1_fd, player);
+    send_halt_packet(client2_fd, player);
 
-    // Close the connections to both clients
     close(client1_fd);
     close(client2_fd);
 
@@ -282,6 +341,7 @@ void handle_shoot_packet(int client_fd, char *buffer, int* opponents_board, int 
     if(row >= game_state.height || col >= game_state.width || row < 0 || col < 0)
     {
         printf("[Server] Player %d shot out of bounds\n", player_id);
+        send_error(client_fd, 400);
         return;
     }
 
@@ -322,6 +382,7 @@ void handle_shoot_packet(int client_fd, char *buffer, int* opponents_board, int 
     else
     {
         printf("[Server] Player %d already hit postion (%d,%d)\n", player, row, col);
+        send_error(client_fd, 401);
     }
 
 }
@@ -339,10 +400,12 @@ void handle_query_packet(int client_fd, int* opponents_board, int player)
         if(opponents_board[i] == -1)
         {
             snprintf(query + strlen(query), BUFFER_SIZE - strlen(query), "Miss at (%d,%d)\n", xPos, yPos);
+            printf("Query: %s", query);
         }
         if(opponents_board[i] == -2)
         {
             snprintf(query + strlen(query), BUFFER_SIZE - strlen(query), "Hit at (%d,%d)\n", xPos, yPos);
+            printf("Query: %s", query);
         }
     }
 
@@ -427,16 +490,18 @@ void* handle_client(void* sockFD)
             if(player == 1)
             {
                 handle_query_packet(client_fd, game_state.player2_board, player);
+                memset(buffer, 0, BUFFER_SIZE);
             }
             if(player == 2)
             {
                 handle_query_packet(client_fd, game_state.player1_board, player);
+                memset(buffer, 0, BUFFER_SIZE);
             }
         }
         else if (strcmp(buffer, "F") == 0) 
         {
             printf("[Server] Forfeit packet received from client %d\n", client_fd);
-            handle_forfeit_packet(client_fd);  
+            handle_forfeit_packet(client_fd, player);  
             break;
         }
         //sscanf
@@ -446,7 +511,7 @@ void* handle_client(void* sockFD)
         printf("[Server] Player 2 Board:");
         print_board(game_state.player2_board, game_state.width, game_state.height);
 
-        snprintf(buffer, BUFFER_SIZE, "ACK");
+        snprintf(buffer, BUFFER_SIZE, "A CKNOWLEDGE");
         send(client_fd, buffer, strlen(buffer), 0);
 
          // Checking the win condition after each packet
