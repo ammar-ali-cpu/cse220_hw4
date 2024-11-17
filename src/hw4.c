@@ -571,32 +571,41 @@ int main()
     address1.sin_addr.s_addr = INADDR_ANY;
     address1.sin_port = htons(PORT1);
 
-
-    //bind(server_fd1, (struct sockaddr*)&address1, sizeof(address1));
-    //listen(server_fd1, 3);
-    if (bind(server_fd1, (struct sockaddr *)&address1, sizeof(address1)) < 0) 
-    {
-        perror("[Server] bind() failed");
-        exit(EXIT_FAILURE);
-    }
-    if (listen(server_fd1, 3) < 0) 
-    {
-        perror("[Server] listen() failed");
-        exit(EXIT_FAILURE);
-    }
-
-
     // Setup socket for client 2
     server_fd2 = socket(AF_INET, SOCK_STREAM, 0);
     address2.sin_family = AF_INET;
     address2.sin_addr.s_addr = INADDR_ANY;
     address2.sin_port = htons(PORT2);
 
-    // bind(server_fd2, (struct sockaddr*)&address2, sizeof(address2));
-    // listen(server_fd2, 3);
+    //bind(server_fd1, (struct sockaddr*)&address1, sizeof(address1));
+    //listen(server_fd1, 3);
+
+    // // Set socket options
+    // if (setsockopt(server_fd1, SOL_SOCKET, SO_REUSEADDR, 1, sizeof(1))) {
+    //     perror("setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))");
+    //     exit(EXIT_FAILURE);
+    // }
+    // if (setsockopt(server_fd1, SOL_SOCKET, SO_REUSEPORT, 1, sizeof(1))) {
+    //     perror("setsockopt(server_fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt))");
+    //     exit(EXIT_FAILURE);
+    // }
+
+    //bind 1 and 2
+    if (bind(server_fd1, (struct sockaddr *)&address1, sizeof(address1)) < 0) 
+    {
+        perror("[Server] bind() failed");
+        exit(EXIT_FAILURE);
+    }
     if (bind(server_fd2, (struct sockaddr *)&address2, sizeof(address2)) < 0) 
     {
         perror("[Server] bind() failed");
+        exit(EXIT_FAILURE);
+    }
+
+    //listen 1 and2
+    if (listen(server_fd1, 3) < 0) 
+    {
+        perror("[Server] listen() failed");
         exit(EXIT_FAILURE);
     }
     if (listen(server_fd2, 3) < 0) 
@@ -604,6 +613,11 @@ int main()
         perror("[Server] listen() failed");
         exit(EXIT_FAILURE);
     }
+    
+
+    // bind(server_fd2, (struct sockaddr*)&address2, sizeof(address2));
+    // listen(server_fd2, 3);
+    
 
     printf("[Server] Waiting for players...\n");
 
