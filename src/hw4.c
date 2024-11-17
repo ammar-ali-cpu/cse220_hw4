@@ -23,6 +23,10 @@ GameState game_state;
 int client1_fd;
 int client2_fd;
 
+pthread_mutex_t turn_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t turn_condition = PTHREAD_COND_INITIALIZER;
+int num_of_player_turn = 1;
+
 int pieces[7][4][4][2] =  
 {
     // Yellow-piece (index 0)
@@ -271,7 +275,7 @@ void handle_shoot_packet(int client_fd, char *buffer, int* opponents_board, int 
     int row;
     int col;
     printf("Buffer is: %s", buffer);
-    sscanf(buffer, "S %d %d", row, col);
+    sscanf(buffer, "S %d %d", &row, &col);
 
     int player_id = (client_fd == client1_fd) ? 1 : 2;
 
@@ -284,8 +288,31 @@ void handle_shoot_packet(int client_fd, char *buffer, int* opponents_board, int 
     int pos = row * game_state.width + col;
     if(opponents_board[pos] > 0)
     {
+        int curr_ship_num = opponents_board[pos];
         opponents_board[pos] = -2;
         printf("[Server] Player %d hit opponents board at postion (%d,%d)\n", player, row, col);
+        int sunk = 1;
+        for (int i = 0; i < game_state.width * game_state.height; i++)
+        {
+            if (opponents_board[i] == curr_ship_num) 
+            {
+                sunk = 0; 
+                break;
+            }
+        }
+
+        if(sunk == 1)
+        {
+            printf("[Server] Player %d sunk opponent's ship\n", player);
+            if(player == 1)
+            {
+                game_state.player2_ships_remaining--;
+            }
+            else
+            {
+                game_state.player1_ships_remaining--;
+            }
+        }
     }
     else if(opponents_board[pos] == 0)
     {
@@ -299,6 +326,44 @@ void handle_shoot_packet(int client_fd, char *buffer, int* opponents_board, int 
 
 }
 
+void handle_query_packet(int client_fd, int* opponents_board, int player)
+{
+    char* query[BUFFER_SIZE] = {0};
+    pthread_mutex_lock(&turn_mutex);
+    int len = game_state.width * game_state.height;
+
+    for(int i = 0; i < len; i++)
+    {
+        int xPos = i / game_state.width;
+        int yPos = i % game_state.width;
+        if(opponents_board[i] == -1)
+        {
+            snprintf(query + strlen(query), BUFFER_SIZE - strlen(query), "Miss at (%d,%d)\n", xPos, yPos);
+        }
+        if(opponents_board[i] == -2)
+        {
+            snprintf(query + strlen(query), BUFFER_SIZE - strlen(query), "Hit at (%d,%d)\n", xPos, yPos);
+        }
+    }
+
+    if(player == 1)
+    {
+        snprintf(query + strlen(query), BUFFER_SIZE - strlen(query), "Opponent's Ships Remaining: %d\n", game_state.player2_ships_remaining);
+
+    }
+    if(player == 2)
+    {
+        snprintf(query + strlen(query), BUFFER_SIZE - strlen(query), "Opponent's Ships Remaining: %d\n", game_state.player1_ships_remaining);
+
+    }
+    pthread_mutex_unlock(&turn_mutex);
+
+    send(client_fd, query, strlen(query), 0);
+    printf("[Server] Sent query response to Player %d:\n%s", player, query);
+    printf("Query: %s", query);
+
+}
+
 void* handle_client(void* sockFD) 
 {
     int client_fd = *((int*)sockFD);
@@ -309,6 +374,14 @@ void* handle_client(void* sockFD)
 
     while(1) 
     {
+        // Wait for this player's turn
+        pthread_mutex_lock(&turn_mutex);
+        while (num_of_player_turn != player) 
+        {
+            pthread_cond_wait(&turn_condition, &turn_mutex);
+        }
+        pthread_mutex_unlock(&turn_mutex);
+
         memset(buffer, 0, BUFFER_SIZE);
         int nbytes = read(client_fd, buffer, BUFFER_SIZE);
         if (nbytes <= 0) {
@@ -349,6 +422,17 @@ void* handle_client(void* sockFD)
                 handle_shoot_packet(client_fd, buffer, game_state.player1_board, player);
             }
         }
+        else if (strncmp(buffer, "Q", 1) == 0)
+        {
+            if(player == 1)
+            {
+                handle_query_packet(client_fd, game_state.player2_board, player);
+            }
+            if(player == 2)
+            {
+                handle_query_packet(client_fd, game_state.player1_board, player);
+            }
+        }
         else if (strcmp(buffer, "F") == 0) 
         {
             printf("[Server] Forfeit packet received from client %d\n", client_fd);
@@ -362,23 +446,29 @@ void* handle_client(void* sockFD)
         printf("[Server] Player 2 Board:");
         print_board(game_state.player2_board, game_state.width, game_state.height);
 
-        // Placeholder response for testing
         snprintf(buffer, BUFFER_SIZE, "ACK");
         send(client_fd, buffer, strlen(buffer), 0);
 
-         // Check win condition after every packet
-        if (game_state.player1_ships_remaining == 0) {
+         // Checking the win condition after each packet
+        if (game_state.player1_ships_remaining == 0) 
+        {
             send(client1_fd, "H 0", 4, 0);
             send(client2_fd, "H 1", 4, 0);
             printf("[Server] Player 1 has lost!\n");
             break;
-        } else if (game_state.player2_ships_remaining == 0) {
+        } else if (game_state.player2_ships_remaining == 0) 
+        {
             send(client2_fd, "H 0", 4, 0);
             send(client1_fd, "H 1", 4, 0);
             printf("[Server] Player 2 has lost!\n");
             break;
         }
 
+        //Switches turns
+        pthread_mutex_lock(&turn_mutex);
+        num_of_player_turn = (player == 1) ? 2 : 1;
+        pthread_cond_broadcast(&turn_condition);
+        pthread_mutex_unlock(&turn_mutex);
     }
 
     close(client_fd);
